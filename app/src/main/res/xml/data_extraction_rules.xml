@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Data Extraction Rules — controls backup/restore behaviour for
+    Android 12+ (API 31+). Sentinel does not store sensitive user data
+    that warrants cloud backup, so all cloud backup is disabled.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <!-- Allow report files to transfer to a new device -->
+        <include domain="file" path="reports/" />
+    </device-transfer>
+</data-extraction-rules>
