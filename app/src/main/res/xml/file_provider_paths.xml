@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    FileProvider paths for Sentinel APK.
+    Grants other apps temporary URI access to generated scan reports.
+-->
+<paths>
+    <!-- Scan report PDFs / JSONs stored in the app's internal files dir -->
+    <files-path
+        name="reports"
+        path="reports/" />
+
+    <!-- APKs staged for analysis in the app's cache dir -->
+    <cache-path
+        name="apk_cache"
+        path="apk_staging/" />
+</paths>

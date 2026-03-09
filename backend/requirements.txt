@@ -1,0 +1,23 @@
+# Sentinel APK — Python Backend Dependencies
+# Install with: pip install -r requirements.txt
+
+# ─── Web Framework ────────────────────────────────────────────────────────
+fastapi==0.115.6          # Async web framework
+uvicorn[standard]==0.32.1 # ASGI server with websocket + reload support
+
+# ─── APK Analysis ─────────────────────────────────────────────────────────
+androguard==3.4.0         # Android APK & DEX static analysis
+# Note: androguard 4.x is available but has a different API.
+# Pin 3.4.0 for stability with misc.AnalyzeAPK() usage in main.py.
+
+# ─── File Handling ────────────────────────────────────────────────────────
+python-multipart==0.0.20  # Required by FastAPI for UploadFile / Form data
+
+# ─── Utilities ────────────────────────────────────────────────────────────
+httpx==0.28.1             # Async HTTP client (for future inter-service calls)
+pydantic==2.10.4          # Data validation (ships with FastAPI, explicit pin)
+
+# ─── Development / Testing ────────────────────────────────────────────────
+pytest==8.3.4
+pytest-asyncio==0.25.0
+httpx                     # reused as test client via fastapi.testclient

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- =========================================================== -->
+    <!--  Sentinel APK — AndroidManifest.xml                         -->
+    <!--  Target: Android 15 (API 35) / 16 (API 36) preview          -->
+    <!-- =========================================================== -->
+
+    <!-- ── Storage ──────────────────────────────────────────────── -->
+    <!--
+        MANAGE_EXTERNAL_STORAGE (Android 11+, API 30+):
+        Required to enumerate and read APK files in arbitrary
+        Download/storage directories without being restricted to
+        the app's own scoped storage buckets. The user is directed
+        to the "All Files Access" system settings screen at runtime.
+        NOTE: Requires a Play Store declaration / special-use
+              justification for production; for sideloaded / hackathon
+              builds declare it freely.
+    -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <!-- READ_EXTERNAL_STORAGE kept for API < 30 fallback -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+
+    <!-- ── Notifications (API 33+) ──────────────────────────────── -->
+    <!--
+        POST_NOTIFICATIONS: Required on Android 13+ (API 33) to show
+        foreground-service and risk-alert notifications. Requested at
+        runtime in MainActivity before starting the Watchtower service.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- ── Foreground Service ────────────────────────────────────── -->
+    <!--
+        FOREGROUND_SERVICE: Base permission needed to call
+        startForeground() on any service.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!--
+        FOREGROUND_SERVICE_SPECIAL_USE: Required on Android 14+
+        (API 34+) for foreground services whose type does not fit any
+        of the predefined categories. Our Watchtower service monitors
+        file-system events — a valid "special use" case. Must be
+        paired with android:foregroundServiceType="specialUse" on
+        the <service> element and a <property> justification.
+    -->
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- ── Network ──────────────────────────────────────────────── -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- ── Package Queries (needed to inspect other APKs) ───────── -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
+    <!-- ================================================================ -->
+    <application
+        android:name=".SentinelApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.SentinelAPK"
+        tools:targetApi="36">
+
+        <!-- ── Main Entry Point ─────────────────────────────────── -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ── Upload / Sandbox Activity ────────────────────────── -->
+        <activity
+            android:name=".ui.SandboxActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.MainActivity" />
+
+        <!-- ── Active Watchtower Foreground Service ──────────────── -->
+        <!--
+            foregroundServiceType="specialUse" satisfies the
+            FOREGROUND_SERVICE_SPECIAL_USE requirement on API 34+.
+            The <property> block below provides the mandatory
+            human-readable justification for this service type.
+        -->
+        <service
+            android:name=".service.WatchtowerService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false">
+
+            <!-- Justification required by API 34+ for specialUse -->
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Sentinel APK monitors the Downloads directory
+                    for newly added APK files and performs local static
+                    analysis to generate a risk report, acting as a
+                    background security auditor." />
+        </service>
+
+        <!-- ── File Provider (for sharing APK scan reports) ─────── -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_provider_paths" />
+        </provider>
+
+    </application>
+
+</manifest>
