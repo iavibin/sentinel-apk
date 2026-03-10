@@ -1,4 +1,3 @@
-```kotlin
 package com.sentinel.apk.network
 
 import okhttp3.OkHttpClient
@@ -34,4 +33,3 @@ object RetrofitClient {
         retrofit.create(ApiService::class.java)
     }
 }
-```

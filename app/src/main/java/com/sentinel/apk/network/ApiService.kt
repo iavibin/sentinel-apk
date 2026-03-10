@@ -1,4 +1,3 @@
-```kotlin
 package com.sentinel.apk.network
 
 import okhttp3.MultipartBody
@@ -13,7 +12,6 @@ interface ApiService {
     @POST("audit")
     suspend fun auditApk(
         @Part file: MultipartBody.Part
-    ): Response<Any>
+    ): Response<com.google.gson.JsonObject>
 
 }
-```

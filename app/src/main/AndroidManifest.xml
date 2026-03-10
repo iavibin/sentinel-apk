@@ -89,6 +89,11 @@
             android:exported="false"
             android:parentActivityName=".ui.MainActivity" />
 
+        <!-- ── Result Activity ──────────────────────────────────── -->
+        <activity
+            android:name=".ui.ResultActivity"
+            android:exported="false" />
+
         <!-- ── Active Watchtower Foreground Service ──────────────── -->
         <!--
             foregroundServiceType="specialUse" satisfies the
