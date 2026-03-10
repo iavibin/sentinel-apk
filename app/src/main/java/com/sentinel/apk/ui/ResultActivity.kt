@@ -30,22 +30,24 @@ import androidx.compose.ui.unit.sp
 import com.google.gson.Gson
 import com.sentinel.apk.ui.theme.SentinelAPKTheme
 import com.sentinel.apk.ui.theme.*
-import kotlinx.coroutines.delay
 
 
 class ResultActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val reportJson = intent.getStringExtra("report_json") ?: ""
-        val report = try {
-            Gson().fromJson(reportJson, AuditReport::class.java)
-        } catch (e: Exception) {
-            null
-        }
 
         setContent {
             SentinelAPKTheme {
                 Surface(color = BgColor, modifier = Modifier.fillMaxSize()) {
+                    val reportJson = remember { intent.getStringExtra("report_json") ?: "" }
+                    val report = remember(reportJson) {
+                        try {
+                            Gson().fromJson(reportJson, AuditReport::class.java)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+
                     if (report != null) {
                         ResultScreen(report)
                     } else {
@@ -84,99 +86,85 @@ class ResultActivity : ComponentActivity() {
 
 @Composable
 fun ResultScreen(report: AuditReport) {
-    val appName = report.app_name
-    val packageName = report.package_name
-    val riskScore = report.permissions.risk_score
-    val safetyGrade = report.safety_grade
-
-    var scanning by remember { mutableStateOf(false) } // No artificial delay needed for real data
-    var showPermissions by remember { mutableStateOf(true) } // Show directly since analysis is done
     var selectedPermission by remember { mutableStateOf<PermissionDetail?>(null) }
     var selectedThreat by remember { mutableStateOf<ThreatPattern?>(null) }
 
-    if (scanning) {
-        ScanScreen()
-    } else {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(BgColor)
-                .padding(16.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BgColor)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = report.app_name,
+            color = TextColor,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
+
+        Text(
+            text = report.package_name,
+            color = MutedText,
+            fontSize = 14.sp,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(30.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = appName,
-                color = TextColor,
-                fontSize = 30.sp,
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
+            RiskScoreCircle(report.permissions.risk_score) {
+                // Animation finished
+            }
+        }
 
-            Text(
-                text = packageName,
-                color = MutedText,
-                fontSize = 14.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
+        Spacer(modifier = Modifier.height(20.dp))
 
-            Spacer(modifier = Modifier.height(30.dp))
+        GradeBadge(report.safety_grade)
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                RiskScoreCircle(riskScore) {
-                    showPermissions = true
+        Spacer(modifier = Modifier.height(20.dp))
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 32.dp)
+        ) {
+            val threats = report.threat_patterns
+            if (!threats.isNullOrEmpty()) {
+                item {
+                    Text(
+                        text = "⚠️ Threat Patterns Detected",
+                        color = HighRisk,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        modifier = Modifier.padding(bottom = 8.dp, top = 16.dp)
+                    )
                 }
+                items(threats) { tp ->
+                    ThreatPatternRow(tp) {
+                        selectedThreat = tp
+                    }
+                }
+                item { Spacer(modifier = Modifier.height(16.dp)) }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            item {
+                Text(
+                    text = "Permissions (${report.permissions.total})",
+                    color = TextColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
 
-            GradeBadge(safetyGrade)
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            AnimatedVisibility(
-                visible = showPermissions,
-                enter = slideInVertically { it } + fadeIn()
-            ) {
-                LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
-                    
-                    val threats = report.threat_patterns
-                    if (!threats.isNullOrEmpty()) {
-                        item {
-                            Text(
-                                text = "⚠️ Threat Patterns Detected",
-                                color = HighRisk,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                modifier = Modifier.padding(bottom = 8.dp, top = 16.dp)
-                            )
-                        }
-                        items(threats) { tp ->
-                            ThreatPatternRow(tp) {
-                                selectedThreat = tp
-                            }
-                        }
-                        item { Spacer(modifier = Modifier.height(16.dp)) }
-                    }
-
-                    item {
-                        Text(
-                            text = "Permissions (${report.permissions.total})",
-                            color = TextColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                    }
-
-                    items(report.permissions.details) { permission ->
-                        PermissionRow(permission) {
-                            selectedPermission = permission
-                        }
-                    }
+            items(report.permissions.details) { permission ->
+                PermissionRow(permission) {
+                    selectedPermission = permission
                 }
             }
         }

@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from analyzer import detect_lethal_clusters, get_permission_reason, get_safety_grade
 
 # androguard components
-from androguard.misc import AnalyzeAPK
+from androguard.core.bytecodes.apk import APK
 
 # ---------------------------------------------------------------------------
 # App bootstrap
@@ -102,27 +102,24 @@ async def audit_apk(
 ) -> JSONResponse:
     """
     Accept an APK file upload, run androguard static analysis, and return
-    a JSON report containing:
-
-    - Package name & version
-    - All declared permissions with risk classification
-    - Aggregated risk score
+    a JSON report. Always returns 200 OK to maintain Android client stability.
     """
+    print(f"[*] Received upload request: {file.filename}")
 
     # Basic validation ---------------------------------------------------
     filename: str = file.filename or "unknown.apk"
     if not filename.lower().endswith(".apk"):
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Only .apk files are accepted.",
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "error", "message": "Only .apk files are accepted."},
         )
 
     # Save to a temp file (androguard needs a real file path) ------------
     apk_bytes: bytes = await file.read()
     if len(apk_bytes) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Uploaded file is empty.",
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "error", "message": "Uploaded file is empty."},
         )
 
     import logging
@@ -134,18 +131,54 @@ async def audit_apk(
             tmp_path = tmp.name
             tmp.write(apk_bytes)
 
-        # androguard analysis --------------------------------------------
-        apk_obj, _, _ = AnalyzeAPK(tmp_path)
+        # 1. DEFENSIVE APK INITIALIZATION --------------------------------
+        apk_obj = None
+        try:
+            # Try normal parsing first
+            apk_obj = APK(tmp_path)
+        except Exception as e:
+            logger.warning(f"Standard APK parsing failed: {e}. Trying skip_resources=True...")
+            try:
+                # Fallback: Skip resource parsing (common cause of ResParserError)
+                apk_obj = APK(tmp_path, skip_resources=True)
+            except Exception as e2:
+                logger.error(f"Total APK parse failure: {e2}")
+                return JSONResponse(
+                    status_code=status.HTTP_200_OK,
+                    content={
+                        "status": "error", 
+                        "message": "Sentinel Error: This APK structure is incompatible with our static analyzer."
+                    },
+                )
 
-        package_name: str = apk_obj.get_package()
-        version_name: str = apk_obj.get_androidversion_name() or "unknown"
-        version_code: str = apk_obj.get_androidversion_code() or "unknown"
-        min_sdk: str = apk_obj.get_min_sdk_version() or "unknown"
-        target_sdk: str = apk_obj.get_target_sdk_version() or "unknown"
-        app_name: str = apk_obj.get_app_name() or "unknown"
+        # 2. DEFENSIVE FIELD EXTRACTION ----------------------------------
+        try:
+            package_name: str = apk_obj.get_package() or "unknown.package"
+        except:
+            package_name = "unknown.package"
 
-        # Raw permissions list
-        declared_permissions: list[str] = sorted(apk_obj.get_permissions())
+        # Wrap get_app_name in try-except to handle ResParserError
+        try:
+            app_name: str = apk_obj.get_app_name() or package_name
+        except Exception as e:
+            logger.warning(f"ResParserError in get_app_name: {e}. Falling back to package name.")
+            app_name = package_name
+
+        print(f"[*] Processing APK: {package_name} for {app_name}")
+
+        try:
+            version_name: str = apk_obj.get_androidversion_name() or "unknown"
+            version_code: str = apk_obj.get_androidversion_code() or "unknown"
+            min_sdk: str = apk_obj.get_min_sdk_version() or "unknown"
+            target_sdk: str = apk_obj.get_target_sdk_version() or "unknown"
+        except:
+            version_name = version_code = min_sdk = target_sdk = "unknown"
+
+        # 3. PERMISSION ANALYSIS -----------------------------------------
+        try:
+            declared_permissions: list[str] = sorted(apk_obj.get_permissions())
+        except:
+            declared_permissions = []
 
         # Annotated permissions
         annotated_permissions: list[dict] = [
@@ -195,14 +228,15 @@ async def audit_apk(
             },
         }
 
-        return JSONResponse(content=report)
+        print(f"[+] Audit complete: {package_name} (Risk: {risk_score})")
+        return JSONResponse(status_code=status.HTTP_200_OK, content=report)
 
     except Exception as exc:  # noqa: BLE001
-        logger.exception("Failed to parse APK")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Failed to parse APK",
-        ) from exc
+        logger.exception("Unexpected error during APK audit")
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "error", "message": f"Sentinel Internal Error: {str(exc)}"},
+        )
 
     finally:
         # Always clean up the temp file

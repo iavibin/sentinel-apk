@@ -1,112 +1,52 @@
-# Sentinel APK
+# Sentinel-APK: Your Mobile Security Watchtower (v1.0.0)
 
-> **An active APK security auditor for Android — because "unsafe" is not an explanation.**
+**Sentinel-APK** is a powerful security tool designed to protect your Android device from hidden threats. It acts like a digital 'X-ray' for apps, checking them for danger before they ever get a chance to steal your data.
 
-## The Problem
+## 1. The Directory Tree
+A clean view of the Sentinel-APK project structure:
 
-Google Play Protect is a black box. It warns users that an APK is _"potentially harmful"_ but never explains **why**. Users who sideload apps from third-party sources have no actionable information.
-
-## The Solution
-
-Sentinel APK intercepts APK downloads, performs **local static analysis**, and produces a **human-readable risk report** that shows exactly which permissions are dangerous and why — without ever sending your files to the cloud.
-
-| Mode | Description |
-|------|-------------|
-| 🗼 **Active Watchtower** | Background service that monitors your Downloads folder and auto-scans any new `.apk` |
-| 🧪 **Manual Sandbox** | Upload any APK manually and get an instant risk report |
-
----
-
-## Project Structure
-
-```
+```text
 Sentinel APK/
-├── app/
+├── app/                        # Android Application (Kotlin/Compose)
 │   ├── src/main/
-│   │   ├── AndroidManifest.xml          # Permissions & service declarations
 │   │   ├── java/com/sentinel/apk/
-│   │   │   └── ui/
-│   │   │       └── MainActivity.kt      # Permission flow + Compose UI
-│   │   └── res/xml/
-│   │       ├── file_provider_paths.xml
-│   │       ├── backup_rules.xml
-│   │       └── data_extraction_rules.xml
-│   └── build.gradle.kts                 # App-level Gradle (Retrofit, Compose …)
-├── gradle/
-│   └── libs.versions.toml              # Centralised version catalog
-├── build.gradle.kts                     # Project-level Gradle
-├── settings.gradle.kts
-└── backend/
-    ├── main.py                          # FastAPI /audit endpoint (androguard)
-    └── requirements.txt
+│   │   │   ├── service/        # Background scan logic
+│   │   │   ├── ui/             # Modern user interface
+│   │   │   └── model/          # Data structures
+│   │   └── AndroidManifest.xml
+│   └── build.gradle.kts
+├── backend/                    # Security Brain (Python/FastAPI)
+│   ├── main.py                 # API Endpoints
+│   ├── analyzer.py             # Security analysis logic
+│   └── requirements.txt
+├── build.gradle.kts             # Project configuration
+└── README.md                   # Project documentation
 ```
+
+## 2. Project Overview (Layman's Terms)
+
+### Active Watchtower (SentinelWatcherService)
+**In plain English:** A digital security guard that watches your downloads 24/7. It stays alert in the background, making sure every new app you download is checked immediately.
+
+### Static Analysis Engine (FastAPI & Androguard)
+**In plain English:** A 'cloud brain' that takes an app apart to see how it works without actually running it. This allows us to find hidden traps before the app even starts.
+
+### Risk Reporting (ResultActivity)
+**In plain English:** A simple dashboard that gives you a 'Safety Grade' from A to F so you know if an app is safe to install. No technical jargon—just a clear "Yes" or "No" for your safety.
+
+## 3. Technical Stack Highlights
+
+*   **Kotlin & Jetpack Compose**: Used for a smooth, modern Android interface that feels premium and responsive.
+*   **FastAPI**: Ensures high-speed communication between the phone and the analyzer, providing near-instant results.
+*   **Androguard**: The industry-standard tool for deconstructing Android files, used to uncover deep-seated security risks.
+
+## 4. Current Status: Prototype v1.0.0
+**End-to-End Loop is Operational:**
+
+- ✅ **Real-time APK detection** in the Downloads folder.
+- ✅ **Successful transmission** to the analysis backend.
+- ✅ **Generation of Risk Scores** and Threat Patterns (like SMS Exfiltration).
+- ✅ **High-priority user notifications** and interactive reports.
 
 ---
-
-## Android Setup
-
-### Requirements
-- Android Studio Ladybug (2024.2+)
-- Android SDK 35 / 36 (Android 15 / 16)
-- Kotlin 2.1+
-
-### Build
-Open the project root in Android Studio and sync Gradle. No extra steps needed.
-
----
-
-## Backend Setup
-
-```bash
-cd backend
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# macOS / Linux
-source .venv/bin/activate
-
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
-```
-
-The API will be available at `http://localhost:8000`.  
-Interactive docs: `http://localhost:8000/docs`
-
-### `/audit` Endpoint
-
-```
-POST /audit
-Content-Type: multipart/form-data
-Body: file=<apk file>
-```
-
-**Response:**
-```json
-{
-  "status": "success",
-  "package_name": "com.example.app",
-  "permissions": {
-    "total": 12,
-    "breakdown": { "HIGH": 3, "MEDIUM": 5, "LOW": 4 },
-    "risk_score": 45,
-    "details": [
-      { "name": "android.permission.CAMERA", "risk": "HIGH", "short_name": "CAMERA" }
-    ]
-  }
-}
-```
-
----
-
-## Key Permissions
-
-| Permission | Why Sentinel Needs It |
-|---|---|
-| `MANAGE_EXTERNAL_STORAGE` | Read APK files from Downloads & SD card for analysis |
-| `FOREGROUND_SERVICE` | Keep Watchtower alive while scanning in background |
-| `FOREGROUND_SERVICE_SPECIAL_USE` | Required on Android 14+ for file-monitoring services |
-| `POST_NOTIFICATIONS` | Alert the user when a risky APK is detected |
-
----
-
-*Built for a hackathon. Stay safe, stay informed.*
+*Prototype v1.0.0. Simple, transparent, and secure.*
