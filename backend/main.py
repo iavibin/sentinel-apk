@@ -98,7 +98,7 @@ async def root() -> dict:
     status_code=status.HTTP_200_OK,
 )
 async def audit_apk(
-    file: Annotated[UploadFile, File(description="The APK file to analyse")],
+    file: UploadFile = File(...),
 ) -> JSONResponse:
     """
     Accept an APK file upload, run androguard static analysis, and return

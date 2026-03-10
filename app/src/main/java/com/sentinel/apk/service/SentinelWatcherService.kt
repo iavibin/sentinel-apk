@@ -154,13 +154,15 @@ class SentinelWatcherService : Service() {
                     val riskScore = runCatching { permissionsObj?.get("risk_score")?.asInt }.getOrNull() ?: 0
                     val safetyGrade = runCatching { json.get("safety_grade")?.asString }.getOrNull() ?: "Unknown"
 
+                    Log.i(TAG, "Scan complete for $fileName: Score=$riskScore, Grade=$safetyGrade")
                     fireScanCompleteNotification(fileName, riskScore, safetyGrade, json.toString())
                 } else {
-                    Log.e(TAG, "API Error: ${response.code()}")
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(TAG, "API Error ${response.code()}: $errorBody")
                     fireFallbackNotification(fileName)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Network exp: ${e.message}")
+                Log.e(TAG, "Network failure: ${Log.getStackTraceString(e)}")
                 fireFallbackNotification(fileName)
             }
         }

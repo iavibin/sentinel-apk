@@ -49,8 +49,31 @@ class ResultActivity : ComponentActivity() {
                     if (report != null) {
                         ResultScreen(report)
                     } else {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("No Report Found or Invalid JSON", color = Color.White)
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MutedText,
+                                    modifier = Modifier.size(64.dp)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "No Report Found",
+                                    color = TextColor,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "The analysis report is missing or invalid.",
+                                    color = MutedText,
+                                    fontSize = 14.sp
+                                )
+                            }
                         }
                     }
                 }
@@ -66,15 +89,10 @@ fun ResultScreen(report: AuditReport) {
     val riskScore = report.permissions.risk_score
     val safetyGrade = report.safety_grade
 
-    var scanning by remember { mutableStateOf(true) }
-    var showPermissions by remember { mutableStateOf(false) }
+    var scanning by remember { mutableStateOf(false) } // No artificial delay needed for real data
+    var showPermissions by remember { mutableStateOf(true) } // Show directly since analysis is done
     var selectedPermission by remember { mutableStateOf<PermissionDetail?>(null) }
     var selectedThreat by remember { mutableStateOf<ThreatPattern?>(null) }
-
-    LaunchedEffect(true) {
-        delay(2000)
-        scanning = false
-    }
 
     if (scanning) {
         ScanScreen()
