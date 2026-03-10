@@ -29,7 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.gson.Gson
 import com.sentinel.apk.ui.theme.SentinelAPKTheme
+import com.sentinel.apk.ui.theme.*
 import kotlinx.coroutines.delay
+
 
 class ResultActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
