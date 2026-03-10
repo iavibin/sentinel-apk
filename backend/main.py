@@ -3,7 +3,7 @@ Sentinel APK — Backend API
 FastAPI service that performs local static analysis on uploaded APK files
 using androguard and returns a structured JSON risk report.
 """
-from analyzer import analyze_apk
+
 from __future__ import annotations
 
 import os
