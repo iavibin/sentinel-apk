@@ -1,5 +1,8 @@
 package com.sentinel.apk.ui
 
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
@@ -17,7 +20,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -25,22 +27,38 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.gson.Gson
+import com.sentinel.apk.ui.theme.SentinelAPKTheme
 import kotlinx.coroutines.delay
 
-data class PermissionItem(
-    val name: String,
-    val risk: String,
-    val reason: String
+data class AuditReport(
+    val status: String,
+    val app_name: String,
+    val package_name: String,
+    val safety_grade: String,
+    val threat_patterns: List<ThreatPattern>? = null,
+    val permissions: PermissionsInfo
 )
 
-val permissions = listOf(
-    PermissionItem("SEND_SMS", "HIGH", "Can silently send SMS messages"),
-    PermissionItem("READ_CONTACTS", "HIGH", "Reads your contact list"),
-    PermissionItem("RECORD_AUDIO", "HIGH", "Can activate microphone"),
-    PermissionItem("ACCESS_FINE_LOCATION", "HIGH", "Tracks your exact location"),
-    PermissionItem("CAMERA", "MEDIUM", "Can access your camera"),
-    PermissionItem("READ_EXTERNAL_STORAGE", "MEDIUM", "Can read files on your device"),
-    PermissionItem("INTERNET", "LOW", "Can access the internet")
+data class ThreatPattern(
+    val name: String,
+    val severity: String,
+    val description: String,
+    val matched: List<String>
+)
+
+data class PermissionsInfo(
+    val total: Int,
+    val breakdown: Map<String, Int>,
+    val risk_score: Int,
+    val details: List<PermissionDetail>
+)
+
+data class PermissionDetail(
+    val name: String,
+    val risk: String,
+    val short_name: String,
+    val reason: String
 )
 
 val BgColor = Color(0xFF0D1117)
@@ -53,24 +71,44 @@ val LowRisk = Color(0xFF3FB950)
 val TextColor = Color(0xFFE6EDF3)
 val MutedText = Color(0xFF8B949E)
 
-@Composable
-fun ResultScreen() {
+class ResultActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val reportPath = intent.getStringExtra("report_path")
+        val reportJson = if (reportPath != null) java.io.File(reportPath).readText() else ""
+        val report = try {
+            Gson().fromJson(reportJson, AuditReport::class.java)
+        } catch (e: Exception) {
+            null
+        }
 
-    val appName = "Flashlight Pro"
-    val packageName = "com.shady.flashlight"
-    val riskScore = 78
-
-    val safetyGrade = when {
-        riskScore > 80 -> "F"
-        riskScore > 60 -> "D"
-        riskScore > 40 -> "C"
-        riskScore > 20 -> "B"
-        else -> "A"
+        setContent {
+            SentinelAPKTheme {
+                Surface(color = BgColor, modifier = Modifier.fillMaxSize()) {
+                    if (report != null) {
+                        ResultScreen(report)
+                    } else {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("No Report Found or Invalid JSON", color = Color.White)
+                        }
+                    }
+                }
+            }
+        }
     }
+}
+
+@Composable
+fun ResultScreen(report: AuditReport) {
+    val appName = report.app_name
+    val packageName = report.package_name
+    val riskScore = report.permissions.risk_score
+    val safetyGrade = report.safety_grade
 
     var scanning by remember { mutableStateOf(true) }
     var showPermissions by remember { mutableStateOf(false) }
-    var selectedPermission by remember { mutableStateOf<PermissionItem?>(null) }
+    var selectedPermission by remember { mutableStateOf<PermissionDetail?>(null) }
+    var selectedThreat by remember { mutableStateOf<ThreatPattern?>(null) }
 
     LaunchedEffect(true) {
         delay(2000)
@@ -80,14 +118,12 @@ fun ResultScreen() {
     if (scanning) {
         ScanScreen()
     } else {
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(BgColor)
                 .padding(16.dp)
         ) {
-
             Text(
                 text = appName,
                 color = TextColor,
@@ -120,15 +156,44 @@ fun ResultScreen() {
 
             GradeBadge(safetyGrade)
 
-            Spacer(modifier = Modifier.height(30.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             AnimatedVisibility(
                 visible = showPermissions,
                 enter = slideInVertically { it } + fadeIn()
             ) {
+                LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
+                    
+                    val threats = report.threat_patterns
+                    if (!threats.isNullOrEmpty()) {
+                        item {
+                            Text(
+                                text = "⚠️ Threat Patterns Detected",
+                                color = HighRisk,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                modifier = Modifier.padding(bottom = 8.dp, top = 16.dp)
+                            )
+                        }
+                        items(threats) { tp ->
+                            ThreatPatternRow(tp) {
+                                selectedThreat = tp
+                            }
+                        }
+                        item { Spacer(modifier = Modifier.height(16.dp)) }
+                    }
 
-                LazyColumn {
-                    items(permissions) { permission ->
+                    item {
+                        Text(
+                            text = "Permissions (${report.permissions.total})",
+                            color = TextColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+
+                    items(report.permissions.details) { permission ->
                         PermissionRow(permission) {
                             selectedPermission = permission
                         }
@@ -146,15 +211,30 @@ fun ResultScreen() {
                     Text("Close")
                 }
             },
-            title = { Text(permission.name) },
+            title = { Text(permission.short_name) },
             text = { Text(permission.reason) }
+        )
+    }
+
+    selectedThreat?.let { threat ->
+        AlertDialog(
+            onDismissRequest = { selectedThreat = null },
+            confirmButton = {
+                Button(
+                    colors = ButtonDefaults.buttonColors(containerColor = HighRisk),
+                    onClick = { selectedThreat = null }
+                ) {
+                    Text("Close")
+                }
+            },
+            title = { Text(threat.name, color = HighRisk) },
+            text = { Text("${threat.description}\n\nMatched: ${threat.matched.joinToString(", ")}") }
         )
     }
 }
 
 @Composable
 fun ScanScreen() {
-
     val progress = remember { Animatable(0f) }
 
     LaunchedEffect(true) {
@@ -171,7 +251,6 @@ fun ScanScreen() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-
         Text(
             text = "Analyzing APK...",
             color = TextColor,
@@ -183,6 +262,8 @@ fun ScanScreen() {
 
         LinearProgressIndicator(
             progress = progress.value,
+            color = Color(0xFF3FB950),
+            trackColor = Color.DarkGray,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 40.dp)
@@ -199,7 +280,6 @@ fun ScanScreen() {
 
 @Composable
 fun RiskScoreCircle(score: Int, onAnimationFinished: () -> Unit) {
-
     val progress = remember { Animatable(0f) }
 
     val color = when {
@@ -209,7 +289,6 @@ fun RiskScoreCircle(score: Int, onAnimationFinished: () -> Unit) {
     }
 
     LaunchedEffect(true) {
-
         progress.animateTo(
             score / 100f,
             animationSpec = tween(
@@ -217,7 +296,6 @@ fun RiskScoreCircle(score: Int, onAnimationFinished: () -> Unit) {
                 easing = FastOutSlowInEasing
             )
         )
-
         onAnimationFinished()
     }
 
@@ -225,11 +303,8 @@ fun RiskScoreCircle(score: Int, onAnimationFinished: () -> Unit) {
         modifier = Modifier.size(170.dp),
         contentAlignment = Alignment.Center
     ) {
-
         Canvas(modifier = Modifier.fillMaxSize()) {
-
             val strokeWidth = 18f
-
             drawArc(
                 color = Color.DarkGray,
                 startAngle = -90f,
@@ -237,7 +312,6 @@ fun RiskScoreCircle(score: Int, onAnimationFinished: () -> Unit) {
                 useCenter = false,
                 style = Stroke(strokeWidth, cap = StrokeCap.Round)
             )
-
             drawArc(
                 color = color,
                 startAngle = -90f,
@@ -248,13 +322,11 @@ fun RiskScoreCircle(score: Int, onAnimationFinished: () -> Unit) {
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-
             Text(
                 text = "Risk Factor",
                 color = TextColor,
                 fontSize = 13.sp
             )
-
             Text(
                 text = "${(progress.value * 100).toInt()}%",
                 color = TextColor,
@@ -267,7 +339,6 @@ fun RiskScoreCircle(score: Int, onAnimationFinished: () -> Unit) {
 
 @Composable
 fun GradeBadge(grade: String) {
-
     val gradeColor = when (grade) {
         "F" -> HighRisk
         "D" -> MediumRisk
@@ -280,13 +351,11 @@ fun GradeBadge(grade: String) {
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
-
         Box(
             modifier = Modifier
                 .background(gradeColor, RoundedCornerShape(8.dp))
                 .padding(horizontal = 20.dp, vertical = 8.dp)
         ) {
-
             Text(
                 text = "Safety Grade: $grade",
                 color = Color.White,
@@ -298,16 +367,49 @@ fun GradeBadge(grade: String) {
 }
 
 @Composable
-fun PermissionRow(permission: PermissionItem, onClick: () -> Unit) {
+fun ThreatPatternRow(threat: ThreatPattern, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .background(CardColor, RoundedCornerShape(10.dp))
+            .clickable { onClick() }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.Warning,
+            contentDescription = null,
+            tint = HighRisk
+        )
 
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = threat.name,
+                color = HighRisk,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = threat.description,
+                color = MutedText,
+                fontSize = 13.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun PermissionRow(permission: PermissionDetail, onClick: () -> Unit) {
     val badgeColor = when (permission.risk) {
-        "HIGH" -> HighRisk
+        "HIGH", "CRITICAL" -> HighRisk
         "MEDIUM" -> MediumRisk
         else -> LowRisk
     }
 
     val icon = when (permission.risk) {
-        "HIGH" -> Icons.Default.Warning
+        "HIGH", "CRITICAL" -> Icons.Default.Warning
         "MEDIUM" -> Icons.Default.Info
         else -> Icons.Default.CheckCircle
     }
@@ -321,7 +423,6 @@ fun PermissionRow(permission: PermissionItem, onClick: () -> Unit) {
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Icon(
             imageVector = icon,
             contentDescription = null,
@@ -331,18 +432,18 @@ fun PermissionRow(permission: PermissionItem, onClick: () -> Unit) {
         Spacer(modifier = Modifier.width(10.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-
             Text(
-                text = permission.name,
+                text = permission.short_name,
                 color = TextColor,
                 fontWeight = FontWeight.Bold
             )
-
-            Text(
-                text = permission.reason,
-                color = MutedText,
-                fontSize = 13.sp
-            )
+            if (permission.reason.isNotEmpty()) {
+                Text(
+                    text = permission.reason,
+                    color = MutedText,
+                    fontSize = 13.sp
+                )
+            }
         }
 
         Box(
@@ -353,7 +454,8 @@ fun PermissionRow(permission: PermissionItem, onClick: () -> Unit) {
             Text(
                 text = permission.risk,
                 color = Color.White,
-                fontSize = 12.sp
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
             )
         }
     }

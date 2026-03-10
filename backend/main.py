@@ -126,11 +126,15 @@ async def audit_apk(
             detail="Uploaded file is empty.",
         )
 
-    with tempfile.NamedTemporaryFile(suffix=".apk", delete=False) as tmp:
-        tmp.write(apk_bytes)
-        tmp_path = tmp.name
+    import logging
+    logger = logging.getLogger(__name__)
 
+    tmp_path = None
     try:
+        with tempfile.NamedTemporaryFile(suffix=".apk", delete=False) as tmp:
+            tmp_path = tmp.name
+            tmp.write(apk_bytes)
+
         # androguard analysis --------------------------------------------
         apk_obj, _, _ = AnalyzeAPK(tmp_path)
 
@@ -195,14 +199,16 @@ async def audit_apk(
         return JSONResponse(content=report)
 
     except Exception as exc:  # noqa: BLE001
+        logger.exception("Failed to parse APK")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Failed to parse APK: {exc}",
+            detail="Failed to parse APK",
         ) from exc
 
     finally:
         # Always clean up the temp file
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
+        if tmp_path:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass

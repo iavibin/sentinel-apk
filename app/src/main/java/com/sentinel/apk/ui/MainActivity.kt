@@ -349,6 +349,12 @@ private fun ReasonRow(icon: String, title: String, body: String) {
  */
 @Composable
 private fun HomeScreen() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) {
+        val intent = Intent(context, com.sentinel.apk.service.SentinelWatcherService::class.java)
+        androidx.core.content.ContextCompat.startForegroundService(context, intent)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()

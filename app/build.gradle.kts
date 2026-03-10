@@ -24,6 +24,7 @@ android {
 
     buildTypes {
         release {
+            buildConfigField("String", "API_BASE_URL", "\"https://api.yourproduction.com/\"")
             isMinifyEnabled   = true
             isShrinkResources = true
             proguardFiles(
@@ -32,6 +33,7 @@ android {
             )
         }
         debug {
+            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000/\"")
             applicationIdSuffix = ".debug"
             isDebuggable        = true
         }

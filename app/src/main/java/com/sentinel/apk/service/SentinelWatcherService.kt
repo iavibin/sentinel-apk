@@ -49,7 +49,7 @@ class SentinelWatcherService : Service() {
     }
 
     private var fileObserver: FileObserver? = null
-    private var alertCounter = 0
+    private val alertCounter = java.util.concurrent.atomic.AtomicInteger(0)
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun onCreate() {
@@ -70,6 +70,7 @@ class SentinelWatcherService : Service() {
     override fun onDestroy() {
         Log.d(TAG, "onDestroy — stopping observer")
         stopWatching()
+        kotlinx.coroutines.cancel(serviceScope)
         super.onDestroy()
     }
 
@@ -148,25 +149,61 @@ class SentinelWatcherService : Service() {
                 val response = RetrofitClient.apiService.auditApk(body)
                 if (response.isSuccessful && response.body() != null) {
                     val json = response.body()!!
-                    val permissionsObj = json.getAsJsonObject("permissions")
-                    val riskScore = permissionsObj.get("risk_score").asInt
-                    val safetyGrade = json.get("safety_grade").asString
+                    val permissionsObj = runCatching { json.getAsJsonObject("permissions") }.getOrNull()
+                    val riskScore = runCatching { permissionsObj?.get("risk_score")?.asInt }.getOrNull() ?: 0
+                    val safetyGrade = runCatching { json.get("safety_grade")?.asString }.getOrNull() ?: "Unknown"
 
                     fireScanCompleteNotification(fileName, riskScore, safetyGrade, json.toString())
                 } else {
                     Log.e(TAG, "API Error: ${response.code()}")
+                    fireFallbackNotification(fileName)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Network exp: ${e.message}")
+                fireFallbackNotification(fileName)
             }
         }
     }
 
+    private fun fireFallbackNotification(fileName: String) {
+        val notificationId = NOTIFICATION_ID_ALERT_BASE + (alertCounter.incrementAndGet())
+        
+        val intent = Intent(this, com.sentinel.apk.ui.MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            notificationId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ALERTS)
+            .setContentTitle("⚠️ APK Detected")
+            .setContentText(fileName)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText("APK Detected — tap to scan manually")
+            )
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+            
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(notificationId, notification)
+    }
+
     private fun fireScanCompleteNotification(fileName: String, riskScore: Int, safetyGrade: String, reportJson: String) {
-        val notificationId = NOTIFICATION_ID_ALERT_BASE + (alertCounter++)
+        val notificationId = NOTIFICATION_ID_ALERT_BASE + (alertCounter.incrementAndGet())
+
+        val cacheFile = File(cacheDir, "latest_report.json")
+        cacheFile.writeText(reportJson)
 
         val resultIntent = Intent(this, com.sentinel.apk.ui.ResultActivity::class.java).apply {
-            putExtra("report_json", reportJson)
+            putExtra("report_path", cacheFile.absolutePath)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         val pendingIntent = PendingIntent.getActivity(

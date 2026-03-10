@@ -102,7 +102,7 @@
             human-readable justification for this service type.
         -->
         <service
-            android:name=".service.WatchtowerService"
+            android:name=".service.SentinelWatcherService"
             android:exported="false"
             android:foregroundServiceType="specialUse"
             android:stopWithTask="false">
