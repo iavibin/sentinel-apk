@@ -16,6 +16,7 @@ import com.sentinel.apk.network.RetrofitClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -70,7 +71,7 @@ class SentinelWatcherService : Service() {
     override fun onDestroy() {
         Log.d(TAG, "onDestroy — stopping observer")
         stopWatching()
-        kotlinx.coroutines.cancel(serviceScope)
+        serviceScope.cancel()
         super.onDestroy()
     }
 

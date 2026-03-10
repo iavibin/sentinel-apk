@@ -30,7 +30,7 @@
     <!--
         POST_NOTIFICATIONS: Required on Android 13+ (API 33) to show
         foreground-service and risk-alert notifications. Requested at
-        runtime in MainActivity before starting the Watchtower service.
+        runtime in MainActivity before starting the SentinelWatcherService.
     -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -44,7 +44,7 @@
     <!--
         FOREGROUND_SERVICE_SPECIAL_USE: Required on Android 14+
         (API 34+) for foreground services whose type does not fit any
-        of the predefined categories. Our Watchtower service monitors
+        of the predefined categories. Our SentinelWatcherService monitors
         file-system events — a valid "special use" case. Must be
         paired with android:foregroundServiceType="specialUse" on
         the <service> element and a <property> justification.
