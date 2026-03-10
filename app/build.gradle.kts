@@ -10,12 +10,12 @@ plugins {
 
 android {
     namespace   = "com.sentinel.apk"
-    compileSdk  = 36   // Android 16 preview (use 35 if 36 not yet in your SDK manager)
+    compileSdk  = 35   // Android 15 (API 35)
 
     defaultConfig {
         applicationId = "com.sentinel.apk"
         minSdk        = 26    // Android 8.0 — broad device coverage
-        targetSdk     = 36
+        targetSdk     = 35
         versionCode   = 1
         versionName   = "0.1.0"
 
@@ -24,7 +24,7 @@ android {
 
     buildTypes {
         release {
-            buildConfigField("String", "API_BASE_URL", "\"https://api.yourproduction.com/\"")
+            buildConfigField("String", "API_BASE_URL", "\"${System.getenv("SENTINEL_API_URL") ?: "https://api.sentinel-security.com/"}\"")
             isMinifyEnabled   = true
             isShrinkResources = true
             proguardFiles(
@@ -88,6 +88,7 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    implementation(libs.gson)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }

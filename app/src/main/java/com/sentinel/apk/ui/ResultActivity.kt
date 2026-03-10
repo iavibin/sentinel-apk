@@ -31,51 +31,10 @@ import com.google.gson.Gson
 import com.sentinel.apk.ui.theme.SentinelAPKTheme
 import kotlinx.coroutines.delay
 
-data class AuditReport(
-    val status: String,
-    val app_name: String,
-    val package_name: String,
-    val safety_grade: String,
-    val threat_patterns: List<ThreatPattern>? = null,
-    val permissions: PermissionsInfo
-)
-
-data class ThreatPattern(
-    val name: String,
-    val severity: String,
-    val description: String,
-    val matched: List<String>
-)
-
-data class PermissionsInfo(
-    val total: Int,
-    val breakdown: Map<String, Int>,
-    val risk_score: Int,
-    val details: List<PermissionDetail>
-)
-
-data class PermissionDetail(
-    val name: String,
-    val risk: String,
-    val short_name: String,
-    val reason: String
-)
-
-val BgColor = Color(0xFF0D1117)
-val CardColor = Color(0xFF161B22)
-
-val HighRisk = Color(0xFFF85149)
-val MediumRisk = Color(0xFFD29922)
-val LowRisk = Color(0xFF3FB950)
-
-val TextColor = Color(0xFFE6EDF3)
-val MutedText = Color(0xFF8B949E)
-
 class ResultActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val reportPath = intent.getStringExtra("report_path")
-        val reportJson = if (reportPath != null) java.io.File(reportPath).readText() else ""
+        val reportJson = intent.getStringExtra("report_json") ?: ""
         val report = try {
             Gson().fromJson(reportJson, AuditReport::class.java)
         } catch (e: Exception) {

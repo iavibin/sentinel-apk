@@ -200,11 +200,8 @@ class SentinelWatcherService : Service() {
     private fun fireScanCompleteNotification(fileName: String, riskScore: Int, safetyGrade: String, reportJson: String) {
         val notificationId = NOTIFICATION_ID_ALERT_BASE + (alertCounter.incrementAndGet())
 
-        val cacheFile = File(cacheDir, "latest_report.json")
-        cacheFile.writeText(reportJson)
-
         val resultIntent = Intent(this, com.sentinel.apk.ui.ResultActivity::class.java).apply {
-            putExtra("report_path", cacheFile.absolutePath)
+            putExtra("report_json", reportJson)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         val pendingIntent = PendingIntent.getActivity(
