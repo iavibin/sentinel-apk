@@ -15,6 +15,9 @@ from fastapi import FastAPI, File, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+# analyzer components
+from analyzer import detect_lethal_clusters, get_permission_reason, get_safety_grade
+
 # androguard components
 from androguard.misc import AnalyzeAPK
 
@@ -147,6 +150,7 @@ async def audit_apk(
                 "name": perm,
                 "risk": classify_permission(perm),
                 "short_name": perm.split(".")[-1],
+                "reason": get_permission_reason(perm),
             }
             for perm in declared_permissions
         ]
@@ -162,11 +166,15 @@ async def audit_apk(
             risk_counts["HIGH"] * 10 + risk_counts["MEDIUM"] * 3 + risk_counts["LOW"],
         )
 
+        threat_patterns = detect_lethal_clusters(declared_permissions)
+        safety_grade = get_safety_grade(risk_score)
+
         report = {
             "status": "success",
             "file": filename,
             "app_name": app_name,
             "package_name": package_name,
+            "safety_grade": safety_grade,
             "version": {
                 "name": version_name,
                 "code": version_code,
@@ -175,6 +183,7 @@ async def audit_apk(
                 "min": min_sdk,
                 "target": target_sdk,
             },
+            "threat_patterns": threat_patterns,
             "permissions": {
                 "total": len(declared_permissions),
                 "breakdown": risk_counts,
