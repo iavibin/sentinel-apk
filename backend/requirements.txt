@@ -6,9 +6,9 @@ fastapi==0.115.6          # Async web framework
 uvicorn[standard]==0.32.1 # ASGI server with websocket + reload support
 
 # ─── APK Analysis ─────────────────────────────────────────────────────────
-androguard==3.4.0         # Android APK & DEX static analysis
+androguard==3.3.5        # Android APK & DEX static analysis
 # Note: androguard 4.x is available but has a different API.
-# Pin 3.4.0 for stability with misc.AnalyzeAPK() usage in main.py.
+# Pin 3.3.5 for stability with misc.AnalyzeAPK() usage in main.py.
 
 # ─── File Handling ────────────────────────────────────────────────────────
 python-multipart==0.0.20  # Required by FastAPI for UploadFile / Form data
